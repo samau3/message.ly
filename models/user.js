@@ -4,6 +4,7 @@ const e = require("express");
 const db = require("../db");
 const { BCRYPT_WORK_FACTOR } = require("../config");
 const { NotFoundError } = require("../expressError");
+const bcrypt = require("bcrypt");
 
 /** User of the site. */
 
@@ -22,9 +23,9 @@ class User {
                           password,
                           first_name,
                           last_name,
-                          phone)
+                          phone, join_at, last_login_at)
         VALUES
-        ($1, $2, $3, $4, $5)
+        ($1, $2, $3, $4, $5, current_timestamp, current_timestamp)
         RETURNING username, password, first_name, last_name, phone`,
       [username, hashedPassword, first_name, last_name, phone]
     );
@@ -60,7 +61,7 @@ class User {
          RETURNING username, last_login_at`,
       [username]);
 
-    user = result.rows[0];
+    const user = result.rows[0];
 
     if (!user) throw new NotFoundError(`No such user: ${username}`);
   }
@@ -94,7 +95,7 @@ class User {
       `, [username]
     );
     
-    user = result.rows[0];
+    const user = result.rows[0];
 
     if (!user) throw new NotFoundError(`No such user: ${username}`);
     return user;
@@ -110,22 +111,37 @@ class User {
 
   static async messagesFrom(username) {
     const result = await db.query(
-      `SELECT m.id AS "id",
-              m.to_user AS "to_user",
-              m.body AS "body",
-              m.sent_at AS "sent_at",
-              m.read_at AS "read_at"
+      `SELECT m.id AS id,
+              m.to_username AS to_username,
+              m.body AS body,
+              m.sent_at AS sent_at,
+              m.read_at AS read_at,
+              t.first_name AS to_first_name,
+              t.last_name AS to_last_name, 
+              t.phone AS to_phone
           FROM messages as m
               JOIN users AS f ON m.from_username = f.username
               JOIN users AS t ON m.to_username = t.username
           WHERE m.from_username = $1
       `, [username]
     );
+    const u = result.rows[0];
 
-    // we need to write another query for to_user
-    // append to_user to return message
-    
+    if (!u) throw new NotFoundError(`No such user: ${username}`);
+    return [{
+      id: u.id,
+      to_user: {
+        username: u.to_username,
+        first_name: u.to_first_name,
+        last_name: u.to_last_name,
+        phone: u.to_phone,
+      },
+      body: u.body,
+      sent_at: u.sent_at,
+      read_at: u.read_at,
+    }];
   }
+
 
   /** Return messages to this user.
    *
