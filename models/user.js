@@ -41,12 +41,12 @@ class User {
           WHERE username = $1`,
       [username]
     );
-    const user = result.rows[0]
+    const user = result.rows[0];
 
     if (user) {
-      return (await bcrypt.compare(password, user.password) === true)
+      return (await bcrypt.compare(password, user.password) === true);
     } else {
-      return false
+      return false;
     }
   }
 
@@ -94,7 +94,7 @@ class User {
           WHERE username = $1
       `, [username]
     );
-    
+
     const user = result.rows[0];
 
     if (!user) throw new NotFoundError(`No such user: ${username}`);
@@ -120,7 +120,6 @@ class User {
               t.last_name AS to_last_name, 
               t.phone AS to_phone
           FROM messages as m
-              JOIN users AS f ON m.from_username = f.username
               JOIN users AS t ON m.to_username = t.username
           WHERE m.from_username = $1
       `, [username]
@@ -148,10 +147,42 @@ class User {
    * [{id, from_user, body, sent_at, read_at}]
    *
    * where from_user is
-   *   {id, first_name, last_name, phone}
+   *   {username, first_name, last_name, phone}
    */
 
   static async messagesTo(username) {
+    const result = await db.query(
+      `SELECT m.id AS id,
+              m.from_username AS from_username,
+              m.body AS body,
+              m.sent_at AS sent_at,
+              m.read_at AS read_at,
+              f.first_name AS from_first_name,
+              f.last_name AS from_last_name, 
+              f.phone AS from_phone
+          FROM messages as m
+              JOIN users AS f ON m.from_username = f.username
+          WHERE m.to_username = $1
+      `, [username]
+    );
+    const u = result.rows[0];
+
+    if (!u) throw new NotFoundError(`No such user: ${username}`);
+
+    // potentially have to loop the results.row and set the objects to be 
+    // in the format below via a map
+    return [{
+      id: u.id,
+      from_user: {
+        username: u.from_username,
+        first_name: u.from_first_name,
+        last_name: u.from_last_name,
+        phone: u.from_phone,
+      },
+      body: u.body,
+      sent_at: u.sent_at,
+      read_at: u.read_at,
+    }];
   }
 }
 
