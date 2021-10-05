@@ -74,6 +74,7 @@ class User {
       `SELECT username, first_name, last_name
           FROM users
       `
+      // include an ORDER BY
     );
     return result.rows;
   }
@@ -165,7 +166,7 @@ class User {
           WHERE m.to_username = $1
       `, [username]
     );
-    const u = result.rows[0];
+    const u = result.rows[0]; // need more descriptive variable name
 
     if (!u) throw new NotFoundError(`No such user: ${username}`);
 

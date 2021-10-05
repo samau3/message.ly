@@ -4,11 +4,11 @@ const jwt = require("jsonwebtoken");
 
 const db = require("../db");
 const Router = require("express").Router;
-const router = new Router();
 const User = require("../models/user");
-const { UnauthorizedError, BadRequestError } = require("../expressError");
+const { BadRequestError } = require("../expressError");
 const { SECRET_KEY } = require("../config");
 
+const router = new Router();
 
 /** POST /login: {username, password} => {token} */
 router.post('/login', async function (req, res) {
@@ -23,7 +23,7 @@ router.post('/login', async function (req, res) {
     let user = result.rows[0];
 
     if (user) {
-        if (await bcrypt.compare(password, user.password) === true) {
+        if (await bcrypt.compare(password, user.password) === true) { // can use User.auth
             await User.updateLoginTimestamp(username);
             const token = jwt.sign({ username }, SECRET_KEY);
             return res.json({ token });
