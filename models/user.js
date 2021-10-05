@@ -73,6 +73,7 @@ class User {
     const result = await db.query(
       `SELECT username, first_name, last_name
           FROM users
+          ORDER BY username
       `
       // include an ORDER BY
     );
@@ -172,6 +173,11 @@ class User {
 
     // potentially have to loop the results.row and set the objects to be 
     // in the format below via a map
+
+    // alternatively, do two database queries
+    // one to get the messages and another to get the users
+    // make the users into a set and then loop through the messages and join the users
+
     return [{
       id: u.id,
       from_user: {

@@ -43,6 +43,22 @@ describe("Auth Routes Test", function () {
                 iat: expect.any(Number)
             });
         });
+
+        test("can't register", async function () {
+            let response = await request(app)
+                .post("/auth/register")
+                .send({
+                    username: "test1",
+                    password: "secret",
+                    first_name: "Bob",
+                    last_name: "Smith",
+                    phone: "+14150000000"
+                });
+
+            expect(response.statusCode).toEqual(400);
+        });
+
+
     });
 
     /** POST /auth/login => token  */

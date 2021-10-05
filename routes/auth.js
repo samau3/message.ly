@@ -14,20 +14,10 @@ const router = new Router();
 router.post('/login', async function (req, res) {
     const { username, password } = req.body;
 
-    // wouldn't it be better to update the User.get method to also return password?
-    const result = await db.query(
-        `SELECT password 
-            FROM users 
-            WHERE username = $1`,
-        [username]);
-    let user = result.rows[0];
-
-    if (user) {
-        if (await bcrypt.compare(password, user.password) === true) { // can use User.auth
-            await User.updateLoginTimestamp(username);
-            const token = jwt.sign({ username }, SECRET_KEY);
-            return res.json({ token });
-        }
+    if (await User.authenticate(username, password)) {
+        await User.updateLoginTimestamp(username);
+        const token = jwt.sign({ username }, SECRET_KEY);
+        return res.json({ token });
     }
     throw new BadRequestError("Invalid user/password");
 })
@@ -47,17 +37,21 @@ router.post('/register', async function (req, res) {
     let user;
     try {
         user = await User.get(username);
+    } catch (err) {
+        if (!user) {
+            const newUser = await User.register({
+                username,
+                password,
+                first_name,
+                last_name,
+                phone
+            })
+            const token = jwt.sign({ username: newUser.username }, SECRET_KEY);
+            return res.json({ token });
+        }
+    }
+    finally {
         throw new BadRequestError("Username already exists");
-    } catch {
-        const newUser = await User.register({
-            username,
-            password,
-            first_name,
-            last_name,
-            phone
-        })
-        const token = jwt.sign({ username: newUser.username }, SECRET_KEY);
-        return res.json({ token });
     }
 })
 
