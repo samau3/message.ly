@@ -153,43 +153,76 @@ class User {
    */
 
   static async messagesTo(username) {
-    const result = await db.query(
-      `SELECT m.id AS id,
-              m.from_username AS from_username,
-              m.body AS body,
-              m.sent_at AS sent_at,
-              m.read_at AS read_at,
-              f.first_name AS from_first_name,
-              f.last_name AS from_last_name, 
-              f.phone AS from_phone
-          FROM messages as m
-              JOIN users AS f ON m.from_username = f.username
-          WHERE m.to_username = $1
-      `, [username]
-    );
-    const u = result.rows[0]; // need more descriptive variable name
+    // const result = await db.query(
+    //   `SELECT m.id AS id,
+    //           m.from_username AS from_username,
+    //           m.body AS body,
+    //           m.sent_at AS sent_at,
+    //           m.read_at AS read_at,
+    //           f.first_name AS from_first_name,
+    //           f.last_name AS from_last_name, 
+    //           f.phone AS from_phone
+    //       FROM messages as m
+    //           JOIN users AS f ON m.from_username = f.username
+    //       WHERE m.to_username = $1
+    //   `, [username]
+    // );
+    // const m = result.rows; // need more descriptive variable name
 
-    if (!u) throw new NotFoundError(`No such user: ${username}`);
+    // if (m.length === 0) throw new NotFoundError(`No messages to: ${username}`);
 
     // potentially have to loop the results.row and set the objects to be 
     // in the format below via a map
+    const messageResult = await db.query(
+      `SELECT id, from_username, body, sent_at, read_at
+          FROM messages
+          WHERE to_username = $1
+      `, [username]
+    );
+
+    const messages = messageResult.rows; // [{id, from_user, body, sent_at, read_at}, {id, from_user, body, sent_at, read_at}]
+    const fromUser = messages.map(m => m.from_username);
+    const formattedUser = fromUser.join();
+
+
+    const userResult = await db.query(
+      `SELECT username, first_name, last_name, phone
+          FROM users
+          WHERE username IN ($1)
+      `, [formattedUser]
+    );
+
+    const users = new Set (userResult); 
+    const usersEntries = users.entries(); // [{username, first_name, last_name, phone}, {username, first_name, last_name, phone}]
+
+    const finalResult = messages.map(m => {
+      
+      for (let entry of usersEntries) {
+        if (entry[0][username] === m.from_username) {
+          m.from_username = entry[0];
+        }
+      }
+      return m;
+    });
+    console.log("finalResult", finalResult);
+    return finalResult;
 
     // alternatively, do two database queries
     // one to get the messages and another to get the users
     // make the users into a set and then loop through the messages and join the users
 
-    return [{
-      id: u.id,
-      from_user: {
-        username: u.from_username,
-        first_name: u.from_first_name,
-        last_name: u.from_last_name,
-        phone: u.from_phone,
-      },
-      body: u.body,
-      sent_at: u.sent_at,
-      read_at: u.read_at,
-    }];
+    // return [{
+    //   id: u.id,
+    //   from_user: {
+    //     username: u.from_username,
+    //     first_name: u.from_first_name,
+    //     last_name: u.from_last_name,
+    //     phone: u.from_phone,
+    //   },
+    //   body: u.body,
+    //   sent_at: u.sent_at,
+    //   read_at: u.read_at,
+    // }];
   }
 }
 
