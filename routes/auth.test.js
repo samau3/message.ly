@@ -95,5 +95,3 @@ describe("Auth Routes Test", function () {
 afterAll(async function () {
     await db.end();
 });
-
-// add a can't register route

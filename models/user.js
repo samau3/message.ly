@@ -152,15 +152,16 @@ class User {
     const messages = messageResult.rows; // [{id, from_user, body, sent_at, read_at}, {id, from_user, body, sent_at, read_at}]
     if (messages.length === 0) throw new NotFoundError(`No messages from: ${username}`);
 
-    const fromUser = messages.map(m => m.to_user);
-    const formattedUser = fromUser.join();
+    const usernames = messages.map(m => m.to_user);
+    const formattedUsernames = usernames.join(); // "username1,username2,username3"
 
     const userResult = await db.query(
       `SELECT username, first_name, last_name, phone
           FROM users
           WHERE username IN ($1)
-      `, [formattedUser]
+      `, [formattedUsernames] // doesn't handle multiple names
     );
+    console.log("userResults", userResult)
 
     const users = new Set(userResult.rows);
     const usersEntries = users.entries();
